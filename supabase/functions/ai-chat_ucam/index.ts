@@ -168,7 +168,7 @@ serve(async (req) => {
     }
 
     // Build FAQ context with IDs so AI can report which ones it used
-    const faqContext = faqs.map(f => 
+    const faqContext = faqs.map(f =>
       `[FAQ_ID:${f.id}] Q: ${f.question}\nA: ${f.answer}${f.products?.name ? ` (Related to: ${f.products.name})` : ""}`
     ).join("\n\n");
 
@@ -179,11 +179,31 @@ serve(async (req) => {
       .map(msg => `${msg.direction === "inbound" ? "Customer" : "Assistant"}: ${msg.message}`)
       .join("\n");
 
-const systemPrompt = `You are an intelligent WhatsApp chatbot assistant for a business. You help customers with:
-1. Product inquiries
-2. Answering FAQs
-3. Taking orders
-4. Providing payment information
+    const systemPrompt = `You are an intelligent WhatsApp chatbot assistant for 4U CAMERA RENT (Sachindra Sanjaya Photography). You help customers with:
+1. Camera, Lens, Stabilizer, Light & Accessory rental inquiries and pricing
+2. Answering FAQs (Location in Kottawa, 24h hours, delivery, booking process)
+3. Providing mandatory registration requirements for renting cameras
+4. Guiding customers to book equipment and take orders
+
+CRITICAL BUSINESS RULES FOR 4U CAMERA RENT:
+- SCOPE OF BUSINESS: We ONLY provide camera and photography equipment rental (Cameras, Lenses, Lights, Stabilizers, Accessories). We do NOT provide wedding, pre-shoot, homecoming, or event photography packages at this time. If a customer asks about photography packages, politely inform them that we only provide camera and equipment renting.
+- LOCATION: Kottawa. Google Maps Link: https://maps.app.goo.gl/kLSJP55Z6osq2xRe7?g_st=ac
+- OPENING HOURS: 24 Hours Open (24h open).
+- DELIVERY: Yes, delivery is available.
+- BRANDS & GEAR: Canon, Sony, Sigma Art, DJI, and studio accessories.
+- MANDATORY REGISTRATION REQUIREMENT:
+  Customers must register before renting cameras by submitting the following documents to our Facebook page (https://www.facebook.com/profile.php?id=61567584624069):
+  1. ID Photos: Clear photos of both sides.
+  2. Social Media: Facebook Profile & Page links.
+  3. Contact: Two active contact numbers.
+  4. Location: Home location (Google Maps link or Address) & Studio location.
+  5. Verification: Billing proof & a photo of your Bank Book's 1st page.
+  6. Identification: A recent, clear photograph of yourself.
+- BOOKING: Customers can specify the required date, camera, and accessories, pay an advance payment, and send booking details to the 4U CAMERA RENT Facebook page.
+- CRITICAL RULE FOR UNAVAILABLE / UNLISTED ITEMS:
+  If a customer asks for ANY camera model, lens, brand, or item that is NOT in the product catalog below or not available, you MUST respond with:
+  "මේ item එක දැනට available නෑ, ඔබට අපගේ සේවාදායකයෙක් හරහා මෙය ලබාදෙන්න පුලුවන් කරුණාකර මෙම අංකය අමතන්න"
+  (Or in English if they ask in English: "This item is currently not available in our stock, but we can arrange it through one of our partner clients. Please contact us.")
 
 IMPORTANT GUIDELINES:
 - Respond in the SAME LANGUAGE the customer uses. Auto-detect their language.
@@ -213,20 +233,20 @@ ${freeDeliveryThreshold > 0 ? `   - FREE DELIVERY THRESHOLD: If the order subtot
 - Sub-variants marked as REQUIRED must be selected by the customer before confirming an order. Always ask for required sub-variants if the customer hasn't specified them.
 - For payment, provide ALL configured payment account details to the customer. List every account with emoji separators:
 ${(() => {
-  const accounts = paymentInfo.accounts;
-  if (accounts && Array.isArray(accounts) && accounts.length > 0) {
-    return accounts.map((a: any, i: number) => {
-      const type = a.account_type || "bank";
-      const label = a.account_label || a.bank_name || "Not configured";
-      const number = a.account_number || "Not configured";
-      const name = a.account_name || "Not configured";
-      if (type === "crypto") return `  ${i + 1}. Crypto/Wallet: ${label}, Address/ID: ${number}, Name: ${name}`;
-      if (type === "digital") return `  ${i + 1}. Digital Wallet: ${label}, Account: ${number}, Name: ${name}`;
-      return `  ${i + 1}. Bank: ${label}, Account: ${number}, Name: ${name}`;
-    }).join("\n");
-  }
-  return `  Bank: ${paymentInfo.bank_name || "Not configured"}, Account: ${paymentInfo.account_number || "Not configured"}, Name: ${paymentInfo.account_name || "Not configured"}`;
-})()}
+        const accounts = paymentInfo.accounts;
+        if (accounts && Array.isArray(accounts) && accounts.length > 0) {
+          return accounts.map((a: any, i: number) => {
+            const type = a.account_type || "bank";
+            const label = a.account_label || a.bank_name || "Not configured";
+            const number = a.account_number || "Not configured";
+            const name = a.account_name || "Not configured";
+            if (type === "crypto") return `  ${i + 1}. Crypto/Wallet: ${label}, Address/ID: ${number}, Name: ${name}`;
+            if (type === "digital") return `  ${i + 1}. Digital Wallet: ${label}, Account: ${number}, Name: ${name}`;
+            return `  ${i + 1}. Bank: ${label}, Account: ${number}, Name: ${name}`;
+          }).join("\n");
+        }
+        return `  Bank: ${paymentInfo.bank_name || "Not configured"}, Account: ${paymentInfo.account_number || "Not configured"}, Name: ${paymentInfo.account_name || "Not configured"}`;
+      })()}
 - STRICT DATA BOUNDARY: You must ONLY use the product catalog, FAQs, and payment information provided below. Do NOT make up products, prices, features, or answers that are not explicitly listed. If a customer asks about something not covered, politely say you don't have that information and suggest they contact the business directly.
 
 PRODUCT IMAGES:
@@ -360,7 +380,7 @@ CRITICAL SECURITY RULE:
     if (usedFaqsMatch && trackedFaqIds.length > 0) {
       const usedIds = usedFaqIds;
       const trackedUsedIds = usedIds.filter((id: string) => trackedFaqIds.includes(id));
-      
+
       if (trackedUsedIds.length > 0) {
         console.log(`Tracked FAQs used: ${trackedUsedIds.join(", ")} for phone ${phoneNumber}`);
         const usageLogs = trackedUsedIds.map((faqId: string) => ({
