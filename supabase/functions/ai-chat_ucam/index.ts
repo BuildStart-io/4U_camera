@@ -35,7 +35,7 @@ serve(async (req) => {
 
     // Fetch products, FAQs, settings, profile, and platform limits
     const [productsRes, faqsRes, settingsRes, profileRes, platformLimitsRes] = await Promise.all([
-      supabase.from("products").select("*").eq("is_active", true).eq("user_id", userId),
+      supabase.from("products").select("*").eq("is_active", true).eq("user_id", userId).order("name"),
       supabase.from("faqs").select("*, products(name)").eq("is_active", true).eq("user_id", userId),
       supabase.from("settings").select("key, value").eq("user_id", userId),
       supabase.from("profiles").select("plan_tier, billing_cycle_start, is_paused, addon_contacts, addon_orders").eq("user_id", userId).single(),
@@ -111,6 +111,7 @@ serve(async (req) => {
     const ordersLimitReached = (ordersCount || 0) >= ordersLimit;
 
     const products = productsRes.data || [];
+    console.log(`Products loaded: ${products.length}, has Sony A7 IV: ${products.some(p => p.name === "Sony A7 IV")}`);
     const faqs = faqsRes.data || [];
     const settings = settingsRes.data || [];
 
