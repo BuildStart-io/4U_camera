@@ -61,7 +61,7 @@ BEGIN
     ),
     (
         'Do you offer delivery?',
-        'Yes, delivery is available.',
+        'We currently only deliver products within a 40KM range from our workshop in Kottawa. If your area is outside this 40KM range, we don''t currently deliver products to your area but you can visit our workshop in Kottawa and hire the products if you are interested: https://maps.app.goo.gl/kLSJP55Z6osq2xRe7?g_st=ac',
         true,
         false
     ),
@@ -90,6 +90,11 @@ BEGIN
         SET answer = 'Mention the required date, the camera, and the accessories you need. You do not have to make an advance payment before booking; if an advance payment is required for any product, our staff members will inform you. Send booking details to the 4U CAMERA RENT Facebook page: https://www.facebook.com/profile.php?id=61567584624069 or call 0777911189.',
             updated_at = now()
         WHERE user_id = v_user_id AND (question ILIKE '%book a camera%' OR question ILIKE '%කැමරාවක් book%');
+
+        UPDATE "4Ucamera".faqs
+        SET answer = 'We currently only deliver products within a 40KM range from our workshop in Kottawa. If your area is outside this 40KM range, we don''t currently deliver products to your area but you can visit our workshop in Kottawa and hire the products if you are interested: https://maps.app.goo.gl/kLSJP55Z6osq2xRe7?g_st=ac',
+            updated_at = now()
+        WHERE user_id = v_user_id AND question ILIKE '%deliver%';
 
         -- Update existing questions
         UPDATE "4Ucamera".faqs f
@@ -128,6 +133,11 @@ BEGIN
         SET answer = 'Mention the required date, the camera, and the accessories you need. You do not have to make an advance payment before booking; if an advance payment is required for any product, our staff members will inform you. Send booking details to the 4U CAMERA RENT Facebook page: https://www.facebook.com/profile.php?id=61567584624069 or call 0777911189.',
             updated_at = now()
         WHERE user_id = v_user_id AND (question ILIKE '%book a camera%' OR question ILIKE '%කැමරාවක් book%');
+
+        UPDATE public.faqs
+        SET answer = 'We currently only deliver products within a 40KM range from our workshop in Kottawa. If your area is outside this 40KM range, we don''t currently deliver products to your area but you can visit our workshop in Kottawa and hire the products if you are interested: https://maps.app.goo.gl/kLSJP55Z6osq2xRe7?g_st=ac',
+            updated_at = now()
+        WHERE user_id = v_user_id AND question ILIKE '%deliver%';
 
         -- Update existing questions
         UPDATE public.faqs f
