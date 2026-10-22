@@ -118,6 +118,15 @@ serve(async (req) => {
     const paymentInfo = settings.find(s => s.key === "payment_info")?.value || {};
     const deliverySettings = settings.find(s => s.key === "delivery_settings")?.value || {};
     const freeDeliveryThreshold = deliverySettings.free_delivery_threshold || 0;
+    const catalogPdfUrl = settings.find(s => s.key === "catalog_pdf_url")?.value?.url || `http://supabase-minio:9000/biz-${userId}/catalog/4U_Camera_Rent_Price_List.pdf`;
+
+    const staffContactSettings = settings.find(s => s.key === "staff_contact_numbers")?.value;
+    const rawStaffPhones: string[] = Array.isArray(staffContactSettings?.phones)
+      ? staffContactSettings.phones.map((p: any) => typeof p === "string" ? p : p.number).filter(Boolean)
+      : ["077 79 11189", "072 8 588 588"];
+    const staffPhones = rawStaffPhones.length > 0 ? rawStaffPhones : ["077 79 11189", "072 8 588 588"];
+    const primaryStaffPhone = staffPhones[0] || "077 79 11189";
+    const allStaffPhonesStr = staffPhones.join(" | ");
 
     const productCatalog = products.map(p => {
       let line = `- ${p.name}: Base price LKR ${p.price} (${p.product_type})`;
@@ -199,10 +208,20 @@ CRITICAL BUSINESS RULES FOR 4U CAMERA RENT:
   4. Location: Home location (Google Maps link or Address) & Studio location.
   5. Verification: Billing proof & a photo of your Bank Book's 1st page.
   6. Identification: A recent, clear photograph of yourself.
-- BOOKING: Customers can specify the required date, camera, and accessories, pay an advance payment, and send booking details to the 4U CAMERA RENT Facebook page.
+- BOOKING & ADVANCE PAYMENT:
+  Customers can specify the required date, camera, and accessories, and send booking details to the 4U CAMERA RENT Facebook page (https://www.facebook.com/profile.php?id=61567584624069) or call our staff at ${allStaffPhonesStr}.
+  Customers do NOT have to pay an advance payment before booking. If any product needs an advance payment, that will be informed directly by our staff members.
 - CRITICAL RULE FOR UNAVAILABLE / UNLISTED ITEMS:
-  If a customer asks for ANY camera model, lens, brand, or item that is NOT in the product catalog below or not available,
-  you mudt tell them This item is currently not available in our stock, but we can arrange it through one of our partner clients. Please contact us.
+  If a customer asks for ANY camera model, lens, brand, equipment, or item that is NOT in the product catalog below or is unavailable, you MUST respond with:
+  "This item is currently not available in the catalogue but we can rent it and provide to you please contact our staff member on this number and tell the requirement ${primaryStaffPhone}"
+  If the customer is conversing in another language (such as Sinhala or Tamil), translate this exact message naturally into their language while keeping the contact phone number ${primaryStaffPhone} unchanged.
+- STRICT PHONE NUMBER USAGE RULE:
+  The ONLY authorized official staff contact numbers for 4U CAMERA RENT are:
+${staffPhones.map(num => `  🔹 ${num}`).join("\n")}
+  CRITICAL RESTRICTION:
+  - You MUST NEVER invent, hallucinate, guess, or output ANY other telephone or mobile number under ANY circumstances.
+  - Whenever providing a contact number (for general support, equipment booking, registration inquiries, or unlisted item requests), you MUST strictly use ONLY the authorized numbers listed above.
+  - Outputting any other phone number is strictly forbidden.
 
 IMPORTANT GUIDELINES:
 - Respond in the SAME LANGUAGE the customer uses. Auto-detect their language Never swith alnguage mid conversation unless the customer ask.
@@ -255,6 +274,11 @@ PRODUCT IMAGES:
 PRODUCT VIDEOS:
 - When a customer asks about a specific product that has a video, include the video URL in a <VIDEO_URL>url</VIDEO_URL> tag at the END of your response (after IMAGE_URL if both exist). Only include one video per message.
 - Only use video URLs from the product catalog below. Never make up video URLs.
+
+PRICE LIST & CATALOG PDF:
+- When a customer asks about product prices, rental rates, a price list, or the catalog:
+  Briefly answer their specific question with the relevant item price(s) and include the catalog PDF at the very END of your message using: <PDF_URL>${catalogPdfUrl}</PDF_URL>.
+- Only include the <PDF_URL> tag when the customer inquires about prices, rates, or the price list/catalog.
 
 FAQ TRACKING:
 - Each FAQ below has an ID in [FAQ_ID:xxx] format.
@@ -550,6 +574,9 @@ CRITICAL SECURITY RULE:
     // Extract video URL if present
     const videoUrlMatch = responseText.match(/<VIDEO_URL>([\s\S]*?)<\/VIDEO_URL>/);
     const videoUrl = videoUrlMatch ? videoUrlMatch[1].trim() : null;
+    // Extract PDF URL if present
+    const pdfUrlMatch = responseText.match(/<PDF_URL>([\s\S]*?)<\/PDF_URL>/);
+    const pdfUrl = pdfUrlMatch ? pdfUrlMatch[1].trim() : null;
 
     // Aggressively strip any JSON or technical markup from the response
     let cleanResponse = responseText;
@@ -557,11 +584,13 @@ CRITICAL SECURITY RULE:
     cleanResponse = cleanResponse.replace(/<ORDER_JSON>[\s\S]*?<\/ORDER_JSON>/g, "");
     cleanResponse = cleanResponse.replace(/<IMAGE_URL>[\s\S]*?<\/IMAGE_URL>/g, "");
     cleanResponse = cleanResponse.replace(/<VIDEO_URL>[\s\S]*?<\/VIDEO_URL>/g, "");
+    cleanResponse = cleanResponse.replace(/<PDF_URL>[\s\S]*?<\/PDF_URL>/g, "");
     cleanResponse = cleanResponse.replace(/<USED_FAQS>[\s\S]*?<\/USED_FAQS>/g, "");
     // Remove truncated/incomplete tags and everything after them
     cleanResponse = cleanResponse.replace(/<ORDER_JSON>[\s\S]*/g, "");
     cleanResponse = cleanResponse.replace(/<IMAGE_URL>[\s\S]*/g, "");
     cleanResponse = cleanResponse.replace(/<VIDEO_URL>[\s\S]*/g, "");
+    cleanResponse = cleanResponse.replace(/<PDF_URL>[\s\S]*/g, "");
     cleanResponse = cleanResponse.replace(/<USED_FAQS>[\s\S]*/g, "");
     // Remove any remaining orphan uppercase XML-like tags
     cleanResponse = cleanResponse.replace(/<\/?[A-Z_]+>/g, "");
@@ -583,6 +612,18 @@ CRITICAL SECURITY RULE:
     cleanResponse = cleanResponse.replace(/\[FAQ_ID:[^\]]*\]/g, "");
     // Clean up leftover whitespace
     cleanResponse = cleanResponse.replace(/\n{3,}/g, "\n\n").trim();
+
+    // Guardrail: Sanitize phone numbers in response. If the AI outputs a mobile/telephone number not in authorized staff numbers, replace it with primary staff phone
+    const allowedPhoneDigits = staffPhones.map((p: string) => p.replace(/\D/g, "")).filter(Boolean);
+    cleanResponse = cleanResponse.replace(/(?:\+94|0)?7[0-9]{1}[\s-]?[0-9]{3}[\s-]?[0-9]{4}/g, (matched) => {
+      const digits = matched.replace(/\D/g, "");
+      const normalized = digits.startsWith("94") ? "0" + digits.slice(2) : digits;
+      const isAllowed = allowedPhoneDigits.some(ap => {
+        const apNorm = ap.startsWith("94") ? "0" + ap.slice(2) : ap;
+        return apNorm === normalized;
+      });
+      return isAllowed ? matched : primaryStaffPhone;
+    });
 
     // Log AI usage independently of conversations
     await supabase.from("ai_usage_logs").insert({
@@ -611,7 +652,7 @@ CRITICAL SECURITY RULE:
     }
 
     return new Response(
-      JSON.stringify({ response: cleanResponse, imageUrl, imageUrls, videoUrl, followupMessage, faqMedia }),
+      JSON.stringify({ response: cleanResponse, imageUrl, imageUrls, videoUrl, pdfUrl, followupMessage, faqMedia }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

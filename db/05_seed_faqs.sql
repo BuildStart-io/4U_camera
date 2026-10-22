@@ -2,6 +2,7 @@
 -- 05_seed_faqs.sql — Seed / Upsert FAQ questions for 4U Camera
 -- Compatible with PostgreSQL / Supabase on self-hosted or cloud instances.
 -- Automatically supports "4Ucamera" schema and "public" schema.
+-- FAQs in English so the AI auto-translates to the customer's native language.
 -- ============================================================================
 
 DO $$
@@ -47,45 +48,56 @@ BEGIN
 
     INSERT INTO tmp_seed_faqs (question, answer, is_active, is_tracked) VALUES
     (
-        'Where is your shop located? (ඔයාලගේ shop එක තියෙන්නේ කොහේද?)',
+        'Where is your shop located?',
         'We are located in Kottawa. Google Maps: https://maps.app.goo.gl/kLSJP55Z6osq2xRe7?g_st=ac',
         true,
         false
     ),
     (
-        'What are your opening hours? (Shop එක open කරලා තියෙන වෙලාවල් මොනවද?)',
-        'We are open 24 hours.',
+        'What are your opening hours?',
+        'We are open 24 hours every day.',
         true,
         false
     ),
     (
-        'Do you offer delivery? (Delivery පහසුකම් තියෙනවාද?)',
-        'Yes, delivery facilities are available.',
+        'Do you offer delivery?',
+        'Yes, delivery is available.',
         true,
         false
     ),
     (
-        'Do I need to register to rent a camera? (කැමරා ගන්න register වෙන්න ඕනෙද?)',
+        'Do I need to register to rent a camera or equipment?',
         'Yes, registration is mandatory before renting. You must provide ID photos (both sides), Facebook profile & page links, 2 contact numbers, home/studio location, utility billing proof, a photo of your Bank Book''s 1st page, and a recent photograph.',
         true,
         false
     ),
     (
-        'How do I book a camera? (කැමරාවක් book කරගන්නේ කොහොමද?)',
-        'Mention the required date, the camera, and the accessories you need, and make an advance payment to reserve your date. Send the booking details to the 4U CAMERA RENT Facebook page link ==> https://www.facebook.com/profile.php?id=61567584624069.',
+        'How do I book a camera or equipment?',
+        'Mention the required date, the camera, and the accessories you need. You do not have to make an advance payment before booking; if an advance payment is required for any product, our staff members will inform you. Send the booking details to the 4U CAMERA RENT Facebook page: https://www.facebook.com/profile.php?id=61567584624069 or call 0777911189.',
+        true,
+        false
+    ),
+    (
+        'Do I need to pay an advance payment before booking?',
+        'No, you do not have to pay an advance payment before booking. If an advance payment is needed for any specific item, our staff members will inform you directly.',
         true,
         false
     );
 
-    -- 3. Upsert into "4Ucamera".faqs if table exists
+    -- 3. Update any legacy booking FAQs that mentioned advance payment in 4Ucamera
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = '4Ucamera' AND table_name = 'faqs') THEN
+        UPDATE "4Ucamera".faqs
+        SET answer = 'Mention the required date, the camera, and the accessories you need. You do not have to make an advance payment before booking; if an advance payment is required for any product, our staff members will inform you. Send booking details to the 4U CAMERA RENT Facebook page: https://www.facebook.com/profile.php?id=61567584624069 or call 0777911189.',
+            updated_at = now()
+        WHERE user_id = v_user_id AND (question ILIKE '%book a camera%' OR question ILIKE '%කැමරාවක් book%');
+
         -- Update existing questions
         UPDATE "4Ucamera".faqs f
         SET answer = s.answer,
             is_active = s.is_active,
             updated_at = now()
         FROM tmp_seed_faqs s
-        WHERE f.user_id = v_user_id AND f.question = s.question;
+        WHERE f.user_id = v_user_id AND lower(f.question) = lower(s.question);
 
         -- Insert new questions
         INSERT INTO "4Ucamera".faqs (
@@ -106,19 +118,24 @@ BEGIN
         FROM tmp_seed_faqs s
         WHERE NOT EXISTS (
             SELECT 1 FROM "4Ucamera".faqs existing 
-            WHERE existing.user_id = v_user_id AND existing.question = s.question
+            WHERE existing.user_id = v_user_id AND lower(existing.question) = lower(s.question)
         );
     END IF;
 
-    -- 4. Upsert into public.faqs if table exists
+    -- 4. Update any legacy booking FAQs that mentioned advance payment in public
     IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'faqs') THEN
+        UPDATE public.faqs
+        SET answer = 'Mention the required date, the camera, and the accessories you need. You do not have to make an advance payment before booking; if an advance payment is required for any product, our staff members will inform you. Send booking details to the 4U CAMERA RENT Facebook page: https://www.facebook.com/profile.php?id=61567584624069 or call 0777911189.',
+            updated_at = now()
+        WHERE user_id = v_user_id AND (question ILIKE '%book a camera%' OR question ILIKE '%කැමරාවක් book%');
+
         -- Update existing questions
         UPDATE public.faqs f
         SET answer = s.answer,
             is_active = s.is_active,
             updated_at = now()
         FROM tmp_seed_faqs s
-        WHERE f.user_id = v_user_id AND f.question = s.question;
+        WHERE f.user_id = v_user_id AND lower(f.question) = lower(s.question);
 
         -- Insert new questions
         INSERT INTO public.faqs (
@@ -139,7 +156,7 @@ BEGIN
         FROM tmp_seed_faqs s
         WHERE NOT EXISTS (
             SELECT 1 FROM public.faqs existing 
-            WHERE existing.user_id = v_user_id AND existing.question = s.question
+            WHERE existing.user_id = v_user_id AND lower(existing.question) = lower(s.question)
         );
     END IF;
 

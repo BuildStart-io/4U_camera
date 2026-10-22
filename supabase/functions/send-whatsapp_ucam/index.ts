@@ -72,7 +72,11 @@ serve(async (req) => {
     // `sessionApiKey` is now the WAHA session name (kept variable name for back-compat with callers).
     const sessionName = sessionApiKey || Deno.env.get("WAHA_DEFAULT_SESSION") || "default";
     const chatId = toChatId(to);
-    const url = mediaUrl || imageUrl;
+    const rawUrl = mediaUrl || imageUrl;
+    // Remap localhost:9000 or 127.0.0.1:9000 to internal docker hostname supabase-minio:9000 for WAHA container
+    const url = rawUrl
+      ? rawUrl.replace(/https?:\/\/(localhost|127\.0\.0\.1):9000/g, "http://supabase-minio:9000")
+      : null;
     const detectedType = explicitType || (url ? detectMediaType(url) : null);
 
     console.log(`Sending WhatsApp via WAHA session=${sessionName} to=${chatId}${url ? ` (${detectedType})` : ""}: ${(message || "").substring(0, 60)}`);

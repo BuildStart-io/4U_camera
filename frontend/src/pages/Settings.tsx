@@ -11,11 +11,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Save, MessageSquare, CreditCard, Copy, Check, Smartphone, RefreshCw, Wifi, WifiOff, Plus, Trash2, ArrowUp, ArrowDown, GripVertical, Clock, Lock, X } from "lucide-react";
+import { Loader2, Save, MessageSquare, CreditCard, Copy, Check, Smartphone, RefreshCw, Wifi, WifiOff, Plus, Trash2, ArrowUp, ArrowDown, GripVertical, Clock, Lock, X, Phone } from "lucide-react";
 import WelcomeMediaUpload from "@/components/settings/WelcomeMediaUpload";
 import StaffManager from "@/components/settings/StaffManager";
 import { useStaffAccess } from "@/hooks/useStaffAccess";
 import { useEffectivePlan } from "@/hooks/useEffectivePlan";
+
+interface StaffContactPhone {
+  id: string;
+  number: string;
+  label: string;
+}
 
 interface PaymentAccount {
   account_type: string;
@@ -76,6 +82,12 @@ export default function Settings() {
 
   // Order Notifications
   const [notificationPhone, setNotificationPhone] = useState("");
+
+  // Staff Contact Numbers for AI Knowledge
+  const [staffPhones, setStaffPhones] = useState<StaffContactPhone[]>([
+    { id: "1", number: "077 79 11189", label: "Primary Contact" },
+    { id: "2", number: "072 8 588 588", label: "Secondary Contact" }
+  ]);
 
   // Order Follow-up Message
   const [orderFollowupMessage, setOrderFollowupMessage] = useState("");
@@ -172,6 +184,17 @@ export default function Settings() {
           case "order_notifications":
             setNotificationPhone((setting.value as any)?.phone || "");
             break;
+          case "staff_contact_numbers": {
+            const scVal = setting.value as any;
+            if (scVal?.phones && Array.isArray(scVal.phones) && scVal.phones.length > 0) {
+              setStaffPhones(scVal.phones.map((p: any, idx: number) => ({
+                id: p.id || crypto.randomUUID(),
+                number: typeof p === "string" ? p : (p.number || ""),
+                label: typeof p === "string" ? `Contact ${idx + 1}` : (p.label || `Contact ${idx + 1}`),
+              })));
+            }
+            break;
+          }
           case "delivery_settings":
             setFreeDeliveryThreshold((setting.value as any)?.free_delivery_threshold || 0);
             break;
@@ -1233,6 +1256,103 @@ export default function Settings() {
                     <Save className="mr-2 h-4 w-4" />
                   )}
                   Save Notifications
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Staff Contact Numbers for AI Knowledge */}
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Phone className="h-5 w-5" />
+                      Staff Contact Numbers (AI Knowledge)
+                    </CardTitle>
+                    <CardDescription>
+                      Official staff phone numbers that the AI chatbot is strictly instructed to provide to customers for inquiries, unlisted items, and booking support
+                    </CardDescription>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setStaffPhones(prev => [...prev, { id: crypto.randomUUID(), number: "", label: `Contact ${prev.length + 1}` }])}
+                  >
+                    <Plus className="h-4 w-4 mr-2" /> Add Number
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  {staffPhones.map((phone) => (
+                    <div key={phone.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 border rounded-lg bg-card/50">
+                      <div className="w-full sm:w-1/3 space-y-1">
+                        <Label className="text-xs">Label / Purpose</Label>
+                        <Input
+                          value={phone.label}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setStaffPhones(prev => prev.map(p => p.id === phone.id ? { ...p, label: val } : p));
+                          }}
+                          placeholder="e.g. Primary Contact, Support"
+                        />
+                      </div>
+                      <div className="w-full sm:flex-1 space-y-1">
+                        <Label className="text-xs">Phone Number</Label>
+                        <Input
+                          value={phone.number}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setStaffPhones(prev => prev.map(p => p.id === phone.id ? { ...p, number: val } : p));
+                          }}
+                          placeholder="e.g. 077 79 11189"
+                        />
+                      </div>
+                      {staffPhones.length > 1 && (
+                        <div className="sm:pt-5">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="text-muted-foreground hover:text-destructive"
+                            onClick={() => setStaffPhones(prev => prev.filter(p => p.id !== phone.id))}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  The AI chatbot is strictly prohibited from inventing or outputting any phone number not listed here.
+                </p>
+                <Button 
+                  onClick={async () => {
+                    const validPhones = staffPhones
+                      .map(p => ({ number: p.number.trim(), label: p.label.trim() }))
+                      .filter(p => p.number.length > 0);
+
+                    if (validPhones.length === 0) {
+                      toast({
+                        title: "Validation Error",
+                        description: "Please provide at least one staff contact number.",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+
+                    await saveSettings("staff_contact_numbers", { phones: validPhones });
+                  }} 
+                  disabled={saving}
+                >
+                  {saving ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  Save Contact Numbers
                 </Button>
               </CardContent>
             </Card>
