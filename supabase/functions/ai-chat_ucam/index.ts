@@ -214,7 +214,7 @@ CRITICAL BUSINESS RULES FOR 4U CAMERA RENT:
 - CRITICAL RULE FOR UNAVAILABLE / UNLISTED ITEMS:
   If a customer asks for ANY camera model, lens, brand, equipment, or item that is NOT in the product catalog below or is unavailable, you MUST respond with:
   "This item is currently not available in the catalogue but we can rent it and provide to you please contact our staff member on this number and tell the requirement ${primaryStaffPhone}"
-  If the customer is conversing in another language (such as Sinhala or Tamil), translate this exact message naturally into their language while keeping the contact phone number ${primaryStaffPhone} unchanged.
+  If the customer is conversing in another language (such as Sinhala, or Tamil), translate this exact message naturally into their language while keeping the contact phone number ${primaryStaffPhone} unchanged.
 - STRICT PHONE NUMBER USAGE RULE:
   The ONLY authorized official staff contact numbers for 4U CAMERA RENT are:
 ${staffPhones.map(num => `  🔹 ${num}`).join("\n")}
